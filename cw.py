@@ -12,9 +12,10 @@
 
 from csv import DictReader, DictWriter
 from os.path import exists
+import datetime
 
-file_name = "phones.csv"
-file_str_copy = "phones_copy.csv"
+file_name = "notes.csv"
+notes_list = {}
 
 
 class LenNumberError(Exception):
@@ -22,95 +23,123 @@ class LenNumberError(Exception):
         self.txt = txt
 
 
-def get_info():
-    # first_name = "Иван"
-    # last_name = "Иванов"
-    first_name = input("Введите имя: ")
-    last_name = input("Введите фамилию: ")
-    phone_number = None
-
-    is_valid = False
-
-    while not is_valid:
-        try:
-            phone_number = int(input("Введите номер: "))
-            # phone_number = 99999999999
-            if len(str(phone_number)) != 11:
-                raise LenNumberError("Не верная длина номера")
-            else:
-                is_valid = True
-        except ValueError:
-            print("Не валидный номер")
-        except LenNumberError as err:
-            print(err)
-            continue
-
-    return [first_name, last_name, phone_number]
-
-
 def create_file(file_name):
     with open(file_name, "w", encoding="utf-8") as data:
-        f_writer = DictWriter(data, fieldnames=["Имя", "Фамилия", "Телефон"])
+        f_writer = DictWriter(data, delimiter = ";", fieldnames=["ID", "Заголовок", "Заметка", "Изменения"])
         f_writer.writeheader()
 
 
-def write_file(file_name, lst):
-    with open(file_name, "r", encoding="utf-8") as data:
-        f_reader = DictReader(data)
-        res = list(f_reader)
-
-    for el in res:
-        if el["Телефон"] == str(lst[2]):
-            print("Такой телефон уже есть в справочнике")
-            return
-
-    obj = {"Имя": lst[0], "Фамилия": lst[1], "Телефон": lst[2]}
-
+def write_file(file_name):
     with open(file_name, "w", encoding="utf-8", newline="") as data:
-        res.append(obj)
-        f_writer = DictWriter(data, fieldnames=["Имя", "Фамилия", "Телефон"])
+        f_writer = DictWriter(data, delimiter = ";", fieldnames=["ID", "Заголовок", "Заметка", "Изменения"])
         f_writer.writeheader()
-        f_writer.writerows(res)
+        for el in notes_list.items():
+            f_writer.writerow({"ID": el[0], "Заголовок": el[1][0], "Заметка": el[1][1], "Изменения": el[1][2]})
 
 
 def read_file(file_name):
     with open(file_name, "r", encoding="utf-8") as data:
-        f_reader = DictReader(data)
-        return list(f_reader)
+        f_reader = DictReader(data, delimiter = ";")
+        list_file = list(f_reader)
+        notes_list.clear()
+        for el in list_file:
+            notes_list[el["ID"]] = [el["Заголовок"], el["Заметка"], el["Изменения"]]
 
+def add_note():
+    note_data = []
+    find_index = True
+    keys_list = notes_list.keys()
+    print(keys_list)
+    i = 0
+    while find_index:
+        if str(i) not in keys_list:
+            i += 1
+        else:
+            find_index = False
+    note_data.append(input('Введите заголовок заметки: '))
+    note_data.append(input('Введите тело заметки: '))
+    note_data.append(datetime.datetime.now().strftime('%d-%m-%Y / %H:%M:%S'))
+    notes_list[str(i)] = note_data
+    print('Заметка успешно добавлена')
+    print('')
 
-def copy_str(file_source, file_reciver, str_num):
-    file_content = read_file(file_source)
-    if str_num > len(file_content):
-        return print("Строка с таким номером отсутствует в исходном файле")
-    file_content = list(file_content[str_num - 1].values())
-    write_file(file_reciver, file_content)
-    return
+def list_notes():
+    list_preview = sorted(notes_list.items(), key=lambda x: datetime.datetime.strptime(x[1][2], '%d-%m-%Y / %H:%M:%S'))
+    print('Список заметок')
+    print('ID\tДата изменения заметки\tЗаголовок')
+    for el in list_preview:
+        print(el[0] + '\t' + el[1][2] + '\t' + el[1][0])
+    print('')
 
+def edit_note(num):
+    if notes_list.get(num) == None:
+        print('Заметка с таким номером отсутствует')
+        print('')
+        return
+    note_data = []
+    note_data.append(input('Введите заголовок заметки: '))
+    note_data.append(input('Введите тело заметки: '))
+    note_data.append(datetime.datetime.now().strftime('%d-%m-%Y / %H:%M:%S'))
+    notes_list[num] = note_data
+    print('Заметка успешно изменена')
+    print('')
+
+def del_note(num):
+    if notes_list.pop(num) == None:
+        print('Заметка с таким номером отсутствует')
+        print('')
+        return
+    else:
+        print('Заметка успешно удалена')
+        print('')
+
+def view_note(num):
+    if notes_list.get(num) == None:
+        print('Заметка с таким номером отсутствует')
+        print('')
+        return
+    print('')
+    print('ID: ' + num)
+    print('Заголовок: ' + notes_list.get(num)[0])
+    print('Тело заметки: ' + notes_list.get(num)[1])
+    print('Дата/время последнего изменения: ' + notes_list.get(num)[2])
+    print('')
 
 def main():
-    while True:
-        command = input("Введите команду: ")
+    prog_exit = True
+    while prog_exit:
+        command = input("Введите команду или q для выхода: ")
 
         if command == "q":
-            break
-        elif command == "w":
+            prog_exit = False
+        elif command == "save":
             if not exists(file_name):
                 create_file(file_name)
-            write_file(file_name, get_info())
-        elif command == "r":
+            write_file(file_name)
+            print('Файл успешно записан')
+            print('')
+        elif command == "read":
             if not exists(file_name):
                 print("Файл отсутствует")
                 continue
-            print(*read_file(file_name))
-        elif command == "c":
-            if not exists(file_name):
-                print("Файл источник отсутствует")
-                continue
-            if not exists(file_str_copy):
-                create_file(file_str_copy)
-            str_copy_num = int(input("Введите номер копируемой строки: "))
-            copy_str(file_name, file_str_copy, str_copy_num)
-
+            read_file(file_name)
+            print('Данные успешно считаны из файла')
+            print('')
+        elif command == "add":
+            add_note()
+        elif command == "list":
+            list_notes()
+        elif command == "edit":
+            note_num = input("Введите номер заметки для редактирования: ")
+            edit_note(note_num)
+        elif command == "del":
+            note_num = input("Введите номер заметки для удаления: ")
+            del_note(note_num)
+        elif command == "view":
+            note_num = input("Введите номер заметки для просмотра: ")
+            view_note(note_num)
+        else:
+            print('Команда не поддерживается')
+            print('')
 
 main()
