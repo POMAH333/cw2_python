@@ -48,11 +48,9 @@ def read_file(file_name):
 def add_note():
     note_data = []
     find_index = True
-    keys_list = notes_list.keys()
-    print(keys_list)
     i = 0
     while find_index:
-        if str(i) not in keys_list:
+        if str(i) in notes_list.keys():
             i += 1
         else:
             find_index = False
